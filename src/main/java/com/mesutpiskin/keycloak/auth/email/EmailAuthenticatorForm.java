@@ -28,6 +28,8 @@ import java.util.Map;
 
 @JBossLog
 public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
+	private static final int MIN_RESEND_INTERVAL_SECONDS = 30;
+	private static final String LAST_RESEND_TIMESTAMP = "email-code-last-resend";
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
@@ -55,23 +57,32 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
         AuthenticatorConfigModel config = context.getAuthenticatorConfig();
         AuthenticationSessionModel session = context.getAuthenticationSession();
 
-        if (session.getAuthNote(EmailConstants.CODE) != null) {
-            // skip sending email code
-            return;
+        // respect minimum time
+        String lastResendTimestamp = session.getAuthNote(LAST_RESEND_TIMESTAMP);
+        if (lastResendTimestamp != null) {
+            long lastSentTime = Long.parseLong(lastResendTimestamp);
+            long now = System.currentTimeMillis();
+            if ((now - lastSentTime) < (MIN_RESEND_INTERVAL_SECONDS * 1000L)) {
+                // minimum time to send
+                log.warn("Tentativa de reenvio antes do tempo mínimo.");
+                return;
+            }
         }
 
         int length = EmailConstants.DEFAULT_LENGTH;
         int ttl = EmailConstants.DEFAULT_TTL;
         if (config != null) {
-            // get config values
             length = Integer.parseInt(config.getConfig().get(EmailConstants.CODE_LENGTH));
             ttl = Integer.parseInt(config.getConfig().get(EmailConstants.CODE_TTL));
         }
 
         String code = SecretGenerator.getInstance().randomString(length, SecretGenerator.DIGITS);
         sendEmailWithCode(context.getSession(), context.getRealm(), context.getUser(), code, ttl);
+
         session.setAuthNote(EmailConstants.CODE, code);
         session.setAuthNote(EmailConstants.CODE_TTL, Long.toString(System.currentTimeMillis() + (ttl * 1000L)));
+        // update sent timestamp
+        session.setAuthNote(LAST_RESEND_TIMESTAMP, Long.toString(System.currentTimeMillis()));
     }
 
     @Override
@@ -84,10 +95,29 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
         if (formData.containsKey("resend")) {
-            resetEmailCode(context);
-            challenge(context, null);
+            String lastResend = context.getAuthenticationSession().getAuthNote(LAST_RESEND_TIMESTAMP);
+            if (lastResend != null) {
+                long lastSentTime = Long.parseLong(lastResend);
+                long now = System.currentTimeMillis();
+                long secondsSinceLast = (now - lastSentTime) / 1000;
+                long secondsRemaining = MIN_RESEND_INTERVAL_SECONDS - secondsSinceLast;
+
+                if (secondsRemaining > 0) {
+                    String msg = String.format("Por favor, aguarde %d segundo%s antes de reenviar o código.",
+                            secondsRemaining,
+                            secondsRemaining > 1 ? "s" : "");
+                    Response challengeResponse = challenge(context, msg, EmailConstants.CODE);
+                    context.challenge(challengeResponse);
+                    return;
+                }
+            }
+
+            // Resend allowed
+            generateAndSendEmailCode(context);
+            showCleanForm(context);
             return;
         }
+
 
         if (formData.containsKey("cancel")) {
             resetEmailCode(context);
@@ -174,5 +204,11 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
         } catch (EmailException eex) {
             log.errorf(eex, "Failed to send access code email. realm=%s user=%s", realm.getId(), user.getUsername());
         }
+    }
+    
+    private void showCleanForm(AuthenticationFlowContext context) {
+        LoginFormsProvider form = context.form().setExecution(context.getExecution().getId());
+        Response response = form.createForm("email-code-form.ftl");
+        context.challenge(response);
     }
 }

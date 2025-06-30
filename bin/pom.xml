@@ -15,8 +15,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <lombok.version>1.18.36</lombok.version>
-        <jakarta.version>3.1.0</jakarta.version>
-        <keycloak.version>26.2.4</keycloak.version>
+        <keycloak.version>26.1.1</keycloak.version>
         <maven-jar.plugin.version>3.4.2</maven-jar.plugin.version>
     </properties>
 
@@ -49,13 +48,7 @@
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
-        
-		<dependency>
-		    <groupId>jakarta.ws.rs</groupId>
-		    <artifactId>jakarta.ws.rs-api</artifactId>
-		    <version>${jakarta.version}</version>
-		    <scope>provided</scope>
-		</dependency>
+
     </dependencies>
 
     <build>

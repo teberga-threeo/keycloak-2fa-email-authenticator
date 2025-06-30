@@ -1,2 +1,5 @@
 com.mesutpiskin.keycloak.auth.email.EmailAuthenticatorFormFactory
 com.mesutpiskin.keycloak.auth.email.ConditionalEmailAuthenticatorFormFactory
+com.mesutpiskin.keycloak.auth.email.SelectiveCredentialAuthenticatorFactory
+com.mesutpiskin.keycloak.auth.email.SaveSelectedCredentialAuthenticatorFactory
+com.mesutpiskin.keycloak.auth.email.Select2faMethodAuthenticatorFactory
