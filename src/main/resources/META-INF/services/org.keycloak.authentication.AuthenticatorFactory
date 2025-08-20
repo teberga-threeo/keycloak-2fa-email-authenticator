@@ -3,3 +3,4 @@ com.mesutpiskin.keycloak.auth.email.ConditionalEmailAuthenticatorFormFactory
 com.mesutpiskin.keycloak.auth.email.SelectiveCredentialAuthenticatorFactory
 com.mesutpiskin.keycloak.auth.email.SaveSelectedCredentialAuthenticatorFactory
 com.mesutpiskin.keycloak.auth.email.Select2faMethodAuthenticatorFactory
+com.ineditta.keycloak.auth.sso.OnlyLinkExistingUserAuthenticatorFactory
